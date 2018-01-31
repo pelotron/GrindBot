@@ -17,8 +17,8 @@ along with GrindBot.  If not, see <http://www.gnu.org/licenses/>.
 
 class Config(object):
     """GrindBot config data model"""
-    def __init__(self, token, db_file):
+    def __init__(self, token, db_file, admins):
         object.__init__(self)
         self.token = token
         self.db_file = db_file
-        print('Credentials loaded.')
+        self.admins = admins

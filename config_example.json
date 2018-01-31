@@ -15,6 +15,16 @@ along with GrindBot.  If not, see <http://www.gnu.org/licenses/>.
 
 {
     "py/object": "config.Config",
-    "token": "your Discord bot token",
-    "db_file": "your db file name"
+    "admins": [
+        {
+            "id": "admin 1 id",
+            "name": "admin 1 name"
+        },
+        {
+            "id": "admin 2 id",
+            "name": "admin 2 name"
+        }
+    ],
+    "db_file": "grind.db",
+    "token": "your Discord bot token"
 }
