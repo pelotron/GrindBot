@@ -34,24 +34,16 @@ class Grinder():
         self.db = Session()
         characters = self.db.query(Character).all()
         for c in characters:
-            # load into memory
+            # load character handles
             self.characters[c.owner_id] = c
             print(c)
 
-        self.running = True
-        self.loop_task = self.bot.loop.create_task(self.game_loop())
+        self.game_task = self.bot.loop.create_task(self.game_loop())
 
     # called when this cog is unloaded (shutdown)
     def __unload(self):
         print('Shutting down Grinder.')
-        self.running = False
-
-        # hack! need to figure out a way to end the task synchronously if possible
-        self.loop_task.cancel()
-
-        for c in self.characters.values():
-            self.db.add(c)
-        self.db.commit()
+        self.game_task.cancel()
         self.db.close()
 
     @commands.command(pass_context = True)
@@ -100,13 +92,15 @@ class Grinder():
     async def game_loop(self):
         """Main game loop."""
         await self.bot.wait_until_ready()
-        print('Game loop started.')
-        while self.running:
-            await asyncio.sleep(1) # 1 Hz
+        while True:
+            # On shutdown the task running this function gets canceled. In order
+            # to guarantee it happens in the sleep() call below, do not make any
+            # other asynchronous calls in this loop!
+            await asyncio.sleep(1)
             for c in self.characters.values():
                 c.uptime += 1
+            # commit changes every tick
             self.db.commit()
-        print('Game loop ended.')
 
 def setup(bot):
     bot.add_cog(Grinder(bot))
