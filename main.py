@@ -56,14 +56,14 @@ async def on_ready():
 @bot.command()
 @commands.check(is_admin)
 async def shutdown():
-    """Shuts down the bot."""
+    """[ADMIN] Shuts down the bot."""
     print('Shutting down Discord bot.')
     await bot.close()
 
 @bot.command()
 @commands.check(is_admin)
 async def load(extension_name : str):
-    """Loads an extension."""
+    """[ADMIN] Loads an extension."""
     try:
         bot.load_extension(extension_name)
     except (AttributeError, ImportError) as e:
@@ -74,14 +74,13 @@ async def load(extension_name : str):
 @bot.command()
 @commands.check(is_admin)
 async def unload(extension_name : str):
-    """Unloads an extension."""
+    """[ADMIN] Unloads an extension."""
     bot.unload_extension(extension_name)
     await bot.say("{} unloaded.".format(extension_name))
 
 @bot.command()
 async def admins():
     """Print the list of admins."""
-    # print admins
     adminnames = [a['name'] for a in config.admins]
     adminstring = '\n'.join(['%s'] * len(adminnames)) % tuple(adminnames)
     await bot.say(adminstring)

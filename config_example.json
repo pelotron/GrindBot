@@ -25,6 +25,7 @@ along with GrindBot.  If not, see <http://www.gnu.org/licenses/>.
             "name": "admin 2 name"
         }
     ],
+    "db_commit_wait": "10",
     "db_file": "grind.db",
     "token": "your Discord bot token"
 }

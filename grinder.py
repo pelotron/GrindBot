@@ -21,6 +21,10 @@ from discord.ext import commands
 
 from character import Character
 from main import Session
+from main import config
+from main import config_file
+from main import is_admin
+import json_util
 
 class Grinder():
     """
@@ -31,12 +35,13 @@ class Grinder():
     def __init__(self, bot):
         self.bot = bot
         self.characters = {}
+
         self.db = Session()
         characters = self.db.query(Character).all()
         for c in characters:
             # load character handles
             self.characters[c.owner_id] = c
-            print(c)
+            print('Loaded %s' % c)
 
         self.game_task = self.bot.loop.create_task(self.game_loop())
 
@@ -44,6 +49,7 @@ class Grinder():
     def __unload(self):
         print('Shutting down Grinder.')
         self.game_task.cancel()
+        self.db.commit()
         self.db.close()
 
     @commands.command(pass_context = True)
@@ -89,18 +95,35 @@ class Grinder():
         else:
             await self.bot.say('Create a character first.')
 
+    @commands.command(pass_context = True)
+    @commands.check(is_admin)
+    async def db_commit_wait(self, ctx, *args):
+        """[ADMIN] Gets/sets the number of game ticks between database commits."""
+        if len(args) == 0:
+            await self.bot.say('DB commit wait is %s ticks.' % config.db_commit_wait)
+        else:
+            config.db_commit_wait = args[0]
+            json_util.write_object_to_file(config_file, config)
+            await self.bot.say('DB commit wait set to %s ticks.' % args[0])
+
     async def game_loop(self):
         """Main game loop."""
         await self.bot.wait_until_ready()
+        game_uptime = 0
+
         while True:
+
             # On shutdown the task running this function gets canceled. In order
             # to guarantee it happens in the sleep() call below, do not make any
             # other asynchronous calls in this loop!
             await asyncio.sleep(1)
+
+            game_uptime += 1
             for c in self.characters.values():
                 c.uptime += 1
-            # commit changes every tick
-            self.db.commit()
+
+            if game_uptime % int(config.db_commit_wait) == 0:
+                self.db.commit()
 
 def setup(bot):
     bot.add_cog(Grinder(bot))

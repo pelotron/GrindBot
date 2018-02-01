@@ -17,8 +17,9 @@ along with GrindBot.  If not, see <http://www.gnu.org/licenses/>.
 
 class Config(object):
     """GrindBot config data model"""
-    def __init__(self, token, db_file, admins):
+    def __init__(self, token, db_file, db_commit_wait, admins):
         object.__init__(self)
         self.token = token
         self.db_file = db_file
+        self.db_commit_wait = db_commit_wait
         self.admins = admins
