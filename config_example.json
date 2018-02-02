@@ -15,6 +15,10 @@ along with GrindBot.  If not, see <http://www.gnu.org/licenses/>.
 
 {
     "py/object": "config.Config",
+    "channel_ids": [
+        "id of channel that bot sends public messages to",
+        "and it's a list just in case"
+    ],
     "admins": [
         {
             "id": "admin 1 id",
