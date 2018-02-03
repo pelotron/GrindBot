@@ -72,6 +72,8 @@ class Grinder():
             msg = 'You already have a character named %s.' % self.characters[player].name
         elif len(args) == 0:
             msg = 'You must name your character.'
+        elif len(args[0]) > 30:
+            msg = 'Don\'t be a troll. Think of a name with a max of 30 characters.'
         else:
             name = args[0]
             # create the new char and store in the db
@@ -135,6 +137,39 @@ class Grinder():
         """Gets Grinder's uptime."""
         time = str(datetime.timedelta(seconds = self.game_uptime))
         msg = 'Grinder has been running for %s.' % time
+        await discord_output.private(self.bot, ctx.message.author, msg)
+
+    @commands.command(pass_context = True)
+    async def scoreboard(self, ctx):
+        """Prints a scoreboard of all characters."""
+        namestr = 'Name'
+        xpstr = 'XP'
+        levelstr = 'Level'
+
+        namelen = len(namestr)
+        xplen = len(xpstr)
+        levellen = len(levelstr)
+
+        for c in self.characters.values():
+            if len(c.name) > namelen:
+                namelen = len(c.name)
+            if len(str(c.xp)) > xplen:
+                xplen = len(str(c.xp))
+            if (len(str(c.level)) > levellen):
+                levellen = len(str(c.level))
+
+        levellen += 1
+        namelen += 2
+        xplen += 1
+
+        layout = "{0:>{l}} | {1:^{n}} | {2:<{x}}\n"
+        msg = layout.format(levelstr, namestr, xpstr, l = levellen, n = namelen, x = xplen)
+        msg += '-' * (levellen + namelen + xplen + 6)
+        msg += '\n'
+
+        for c in sorted(self.characters.values(), key = lambda char: char.xp, reverse = True):
+            msg += layout.format(c.level, c.name, c.xp, l = levellen, n = namelen, x = xplen)
+
         await discord_output.private(self.bot, ctx.message.author, msg)
 
     async def print_message_queues(self):
