@@ -19,7 +19,7 @@ from db_base import DbBase
 from sqlalchemy import Column, Integer, String, orm
 
 def get_level(xp):
-    level = int(xp / 2500) + 1
+    level = int((xp / float(100)) ** (1/1.5)) + 1
     return level;
 
 class Character(DbBase):
@@ -45,7 +45,7 @@ class Character(DbBase):
         return '<Character(name = %s, xp = %d, owner_id = %s)>' % (
             self.name, self.xp, self.owner_id)
 
-    async def add_xp(self, xp):
+    def add_xp(self, xp):
         """Adds xp to this character."""
         self.xp += xp
         level = get_level(self.xp)
@@ -55,7 +55,7 @@ class Character(DbBase):
             for i in range(self.level, level):
                 self.level += 1
                 if self.signal_level_up is not None:
-                    await self.signal_level_up(self)
+                    self.signal_level_up(self)
 
     def connect_level_up(self, func):
         """

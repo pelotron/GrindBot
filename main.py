@@ -86,7 +86,7 @@ async def unload(ctx, extension_name : str):
 async def admins(ctx):
     """Print the list of admins."""
     adminnames = [a['name'] for a in config.admins]
-    adminstring = '\n'.join(['%s'] * len(adminnames)) % tuple(adminnames)
+    adminstring = '\n'.join(adminnames)
     await discord_output.private(bot, ctx.message.author, adminstring)
 
 # start up
