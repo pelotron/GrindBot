@@ -20,6 +20,7 @@ from discord.ext import commands
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+import discord_output
 import json_util
 
 # database models
@@ -37,7 +38,7 @@ bot-in-progress
 
 '''
 
-bot = commands.Bot(command_prefix = '!', description = bot_description)
+bot = commands.Bot(command_prefix = '!', description = bot_description, pm_help = True)
 
 db_engine = create_engine('sqlite:///%s' % config.db_file, echo = False)
 db_base.DbBase.metadata.create_all(db_engine, checkfirst = True)
@@ -60,30 +61,33 @@ async def shutdown():
     print('Shutting down Discord bot.')
     await bot.close()
 
-@bot.command()
+@bot.command(pass_context = True)
 @commands.check(is_admin)
-async def load(extension_name : str):
+async def load(ctx, extension_name : str):
     """[ADMIN] Loads an extension."""
     try:
         bot.load_extension(extension_name)
     except (AttributeError, ImportError) as e:
-        await bot.say("```py\n{}: {}\n```".format(type(e).__name__, str(e)))
+        msg = '```py\n{}: {}\n```'.format(type(e).__name__, str(e))
+        await discord_output.private(bot, ctx.message.author, msg)
         return
-    await bot.say("{} loaded.".format(extension_name))
+    msg = '{} loaded.'.format(extension_name)
+    await discord_output.private(bot, ctx.message.author, msg)
 
-@bot.command()
+@bot.command(pass_context = True)
 @commands.check(is_admin)
-async def unload(extension_name : str):
+async def unload(ctx, extension_name : str):
     """[ADMIN] Unloads an extension."""
     bot.unload_extension(extension_name)
-    await bot.say("{} unloaded.".format(extension_name))
+    msg = '{} unloaded.'.format(extension_name)
+    await discord_output.private(bot, ctx.message.author, msg)
 
-@bot.command()
-async def admins():
+@bot.command(pass_context = True)
+async def admins(ctx):
     """Print the list of admins."""
     adminnames = [a['name'] for a in config.admins]
     adminstring = '\n'.join(['%s'] * len(adminnames)) % tuple(adminnames)
-    await bot.say(adminstring)
+    await discord_output.private(bot, ctx.message.author, adminstring)
 
 # start up
 if __name__ == '__main__':

@@ -21,7 +21,7 @@ from discord.ext import commands
 from main import config
 
 def pretty_print(message):
-    return '```{}```'.format(message)
+    return '```\n{}\n```'.format(message)
 
 async def public(bot, message):
     """Sends the message to the configured bot output channels"""

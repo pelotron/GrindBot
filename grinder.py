@@ -21,10 +21,7 @@ import discord
 from discord.ext import commands
 
 from character import Character
-from main import Session
-from main import config
-from main import config_file
-from main import is_admin
+from main import Session, config, config_file, is_admin
 import discord_output
 import json_util
 
@@ -64,10 +61,12 @@ class Grinder():
     async def create_character(self, ctx, *args):
         """Creates a new character for the player if they don't have one"""
         player = ctx.message.author.id
+        msg = ''
+
         if player in self.characters.keys():
-            await self.bot.say('You already have a character named %s.' % self.characters[player].name)
+            msg = 'You already have a character named %s.' % self.characters[player].name
         elif len(args) == 0:
-            await self.bot.say('You must name your character.')
+            msg = 'You must name your character.'
         else:
             name = args[0]
             # create the new char and store in the db
@@ -76,48 +75,60 @@ class Grinder():
             self.characters[player] = c
             self.db.add(c)
             self.db.commit()
-            await self.bot.say('Created character %s!' % name)
+            msg = 'Created character %s!' % name
+
+        await discord_output.private(self.bot, ctx.message.author, msg)
 
     @commands.command(pass_context = True)
     async def delete_character(self, ctx):
         """Delete's a player's character"""
         player = ctx.message.author.id
+        msg = ''
         if player in self.characters.keys():
             c = self.characters[player]
             self.db.delete(c)
             self.db.commit()
             name = c.name
             del self.characters[player]
-            await self.bot.say('%s has died.' % name)
+            msg = '%s has died.' % name
         else:
-            await self.bot.say('You do not have a live character.')
+            msg = 'You do not have a live character.'
+
+        await discord_output.private(self.bot, ctx.message.author, msg)
 
     @commands.command(pass_context = True)
     async def progress(self, ctx):
         """Reports a player's progress."""
         player = ctx.message.author.id
+        msg = ''
         if player in self.characters.keys():
             c = self.characters[player]
-            await self.bot.say(c.get_progress())
+            msg = c.get_progress()
         else:
-            await self.bot.say('Create a character first.')
+            msg = 'Create a character first.'
+
+        await discord_output.private(self.bot, ctx.message.author, msg)
 
     @commands.command(pass_context = True)
     @commands.check(is_admin)
     async def db_commit_wait(self, ctx, *args):
         """[ADMIN] Gets/sets the number of game ticks between database commits."""
+        msg = ''
         if len(args) == 0:
-            await self.bot.say('DB commit wait is %s ticks.' % config.db_commit_wait)
+            msg = 'DB commit wait is %s ticks.' % config.db_commit_wait
         else:
             config.db_commit_wait = args[0]
             json_util.write_object_to_file(config_file, config)
-            await self.bot.say('DB commit wait set to %s ticks.' % args[0])
+            msg = 'DB commit wait set to %s ticks.' % config.db_commit_wait
 
-    @commands.command()
-    async def uptime(self):
+        await discord_output.private(self.bot, ctx.message.author, msg)
+
+    @commands.command(pass_context = True)
+    async def uptime(self, ctx):
         """Gets Grinder's uptime."""
-        msg = str(datetime.timedelta(seconds = self.game_uptime))
-        await self.bot.say('Grinder has been running for %s.' % msg)
+        time = str(datetime.timedelta(seconds = self.game_uptime))
+        msg = 'Grinder has been running for %s.' % time
+        await discord_output.private(self.bot, ctx.message.author, msg)
 
     async def game_loop(self):
         """Main game loop."""
