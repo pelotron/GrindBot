@@ -1,0 +1,74 @@
+[
+  {
+    "py/object": "mission.MissionJson",
+    "name": "alien_planet_1.1",
+    "description": "Fly your ship to an alien planet to discover what's there...",
+    "epilogue": "There are signs of life, but it looks dangerous.",
+    "xp_reward": 100,
+    "time_required": 300,
+    "tier": 2,
+    "branches": [
+      {
+        "py/object": "mission.MissionJson",
+        "name": "alien_planet_2.1",
+        "description": "It looks too risky; fly back home.  At least you've collected a lot of interesting data that can be sold.",
+        "epilogue": "You arrive back at the station.",
+        "xp_reward": 300,
+        "time_required": 900,
+        "tier": 2,
+        "branches": []
+      },
+      {
+        "py/object": "mission.MissionJson",
+        "name": "alien_planet_2.2",
+        "description": "Enter the planet's orbit and scan for a landing zone.",
+        "epilogue": "You descend through the weak atmosphere and land in a shadowed valley.",
+        "xp_reward": 50,
+        "time_required": 150,
+        "tier": 2,
+        "branches": [
+          {
+            "py/object": "mission.MissionJson",
+            "name": "alien_planet_3.1",
+            "description": "Investigate the primordial lake.",
+            "epilogue": "You'll spend the evening scraping bio crust off your boots, but you got the job done.  You set Autopilot on its course and return home.",
+            "xp_reward": 400,
+            "time_required": 1200,
+            "tier": 2,
+            "branches": []
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "py/object": "mission.MissionJson",
+    "name": "clean_nuclear_spill_1.1",
+    "description": "The reactor is leaking again and you need to clean it up.  Don't forget your hazmat suit.",
+    "epilogue": "Wait, this isn't nuclear fuel... the cantina's urinal was leaking.",
+    "xp_reward": 25,
+    "time_required": 100,
+    "tier": 1,
+    "branches": []
+  },
+  {
+    "py/object": "mission.MissionJson",
+    "name": "data_entry_1.1",
+    "description": "Import radio telescope scan data into the star map supercomputer.",
+    "epilogue": "You entered so much data.  Billions and billions of pages...",
+    "xp_reward": 50,
+    "time_required": 200,
+    "tier": 1,
+    "branches": []
+  },
+  {
+    "py/object": "mission.MissionJson",
+    "name": "space_walk_1.1",
+    "description": "Space walk outside the command module and upgrade the Deep Space Comm Radio.",
+    "epilogue": "Now we finally have enough bandwidth to download space porn.",
+    "xp_reward": 75,
+    "time_required": 300,
+    "tier": 1,
+    "branches": []
+  }
+]

@@ -15,15 +15,20 @@ You should have received a copy of the GNU General Public License
 along with GrindBot.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+# external modules
 import asyncio
 import datetime
 import discord
 from discord.ext import commands
+import random
 
+# Grinder modules
 from character import Character
 from main import Session, config, config_file, is_admin
 import discord_output
 import json_util
+import mission
+from mission_control import MissionControl
 
 class Grinder():
     """
@@ -32,35 +37,46 @@ class Grinder():
     """
 
     def __init__(self, bot):
-        self.bot = bot
-        self.characters = {}
-        self.game_uptime = 0
+        self._bot = bot
+        self._characters = {}
+        self._game_uptime = 0
 
         # message queues
-        self.public_messages = []
-        self.private_messages = {} # user: list(messages)
+        self._public_messages = []
+        self._private_messages = {} # user: list(messages)
 
-        self.db = Session()
-        characters = self.db.query(Character).all()
-        for c in characters:
-            # load character handles
-            c.connect_level_up(self.announce_character_level)
-            self.characters[c.owner_id] = c
-            print('Loaded %s' % c)
+        random.seed()
+        db = Session()
 
-        self.game_task = self.bot.loop.create_task(self.game_loop())
+        # pick up mission updates
+        self._mission_control = MissionControl()
+        self._mission_control.update_db_missions(db)
+        db.commit()
+        print('Missions loaded.')
+
+        self.__init_characters(db)
+
+        db.close()
+
+        self._game_task = self._bot.loop.create_task(self.__game_loop())
 
     def __unload(self):
         """Called when this cog is unloaded on shutdown."""
         print('Shutting down Grinder.')
-        self.game_task.cancel()
-        self.db.commit()
-        self.db.close()
+        self._game_task.cancel()
+        self.__save_game_to_db()
 
-    def announce_character_level(self, character):
-        """Callback bound to characters that queues a level-up announcement."""
-        msg = '%s is now level %s (%d XP)!' % (character.name, character.level, character.xp)
-        self.public_messages.append(msg)
+    def __init_characters(self, db):
+        characters = db.query(Character).all()
+        for c in characters:
+            db.expunge(c) # detach object from db
+            self.__init_character(c)
+            print('Loaded %s' % c)
+
+    def __init_character(self, character):
+        character.connect_level_up(self.__announce_character_level)
+        character.connect_mission_complete(self.__mission_complete)
+        self._characters[character._owner_id] = character
 
     @commands.command(pass_context = True)
     async def create_character(self, ctx, *args):
@@ -68,8 +84,8 @@ class Grinder():
         player = ctx.message.author.id
         msg = ''
 
-        if player in self.characters:
-            msg = 'You already have a character named %s.' % self.characters[player].name
+        if player in self._characters:
+            msg = 'You already have a character named %s.' % self._characters[player]._name
         elif len(args) == 0:
             msg = 'You must name your character.'
         elif len(args[0]) > 30:
@@ -78,45 +94,51 @@ class Grinder():
             name = args[0]
             # create the new char and store in the db
             c = Character(name, player)
-            c.connect_level_up(self.announce_character_level)
-            self.characters[player] = c
-            self.db.add(c)
-            self.db.commit()
-            msg = 'Created character %s!' % name
-            self.public_messages.append('%s has entered the world!' % name)
 
-        await discord_output.private(self.bot, ctx.message.author, msg)
+            db = Session()
+            db.add(c)
+            db.commit()
+            db.expunge(c)
+            db.close()
+
+            self.__init_character(c)
+            msg = 'Created character %s!' % name
+            self._public_messages.append('%s has entered the world!' % name)
+
+        await discord_output.private(self._bot, ctx.message.author, msg)
 
     @commands.command(pass_context = True)
     async def delete_character(self, ctx):
         """Delete's a player's character"""
         player = ctx.message.author.id
         msg = ''
-        if player in self.characters:
-            c = self.characters[player]
-            self.db.delete(c)
-            self.db.commit()
-            name = c.name
-            del self.characters[player]
+        if player in self._characters:
+            c = self._characters[player]
+            db = Session()
+            db.delete(c)
+            db.commit()
+            db.close()
+            name = c._name
+            del self._characters[player]
             msg = '%s has been deleted.' % name
-            self.public_messages.append('%s was unexpectedly smitten by the gods.' % name)
+            self._public_messages.append('%s stumbled out an airlock and died.' % name)
         else:
             msg = 'You do not have a live character.'
 
-        await discord_output.private(self.bot, ctx.message.author, msg)
+        await discord_output.private(self._bot, ctx.message.author, msg)
 
     @commands.command(pass_context = True)
     async def progress(self, ctx):
         """Reports a player's progress."""
         player = ctx.message.author.id
         msg = ''
-        if player in self.characters:
-            c = self.characters[player]
+        if player in self._characters:
+            c = self._characters[player]
             msg = c.get_progress()
         else:
             msg = 'Create a character first.'
 
-        await discord_output.private(self.bot, ctx.message.author, msg)
+        await discord_output.private(self._bot, ctx.message.author, msg)
 
     @commands.command(pass_context = True)
     @commands.check(is_admin)
@@ -130,14 +152,14 @@ class Grinder():
             json_util.write_object_to_file(config_file, config)
             msg = 'DB commit wait set to %s ticks.' % config.db_commit_wait
 
-        await discord_output.private(self.bot, ctx.message.author, msg)
+        await discord_output.private(self._bot, ctx.message.author, msg)
 
     @commands.command(pass_context = True)
     async def uptime(self, ctx):
         """Gets Grinder's uptime."""
-        time = str(datetime.timedelta(seconds = self.game_uptime))
+        time = str(datetime.timedelta(seconds = self._game_uptime))
         msg = 'Grinder has been running for %s.' % time
-        await discord_output.private(self.bot, ctx.message.author, msg)
+        await discord_output.private(self._bot, ctx.message.author, msg)
 
     @commands.command(pass_context = True)
     async def scoreboard(self, ctx):
@@ -150,13 +172,13 @@ class Grinder():
         xplen = len(xpstr)
         levellen = len(levelstr)
 
-        for c in self.characters.values():
-            if len(c.name) > namelen:
-                namelen = len(c.name)
-            if len(str(c.xp)) > xplen:
-                xplen = len(str(c.xp))
-            if (len(str(c.level)) > levellen):
-                levellen = len(str(c.level))
+        for c in self._characters.values():
+            if len(c._name) > namelen:
+                namelen = len(c._name)
+            if len(str(c.get_xp())) > xplen:
+                xplen = len(str(c.get_xp()))
+            if (len(str(c.get_level())) > levellen):
+                levellen = len(str(c.get_level()))
 
         levellen += 1
         namelen += 2
@@ -167,42 +189,87 @@ class Grinder():
         msg += '-' * (levellen + namelen + xplen + 6)
         msg += '\n'
 
-        for c in sorted(self.characters.values(), key = lambda char: char.xp, reverse = True):
-            msg += layout.format(c.level, c.name, c.xp, l = levellen, n = namelen, x = xplen)
+        for c in sorted(self._characters.values(), key = lambda char: char.get_xp(), reverse = True):
+            msg += layout.format(c.get_level(), c._name, c.get_xp(), l = levellen, n = namelen, x = xplen)
 
-        await discord_output.private(self.bot, ctx.message.author, msg)
+        await discord_output.private(self._bot, ctx.message.author, msg)
 
-    async def print_message_queues(self):
+    def __announce_character_level(self, character):
+        """Callback bound to characters that queues a level-up announcement."""
+        msg = '%s is now level %s (%d XP)!' % (character._name, character.get_level(), character.get_xp())
+        self._public_messages.append(msg)
+
+    def __mission_complete(self, character):
+        """Callback bound to character mission complete signals"""
+        current_mission = character.get_current_mission()
+        xp_gain = current_mission.get_variable_xp_reward()
+        self._public_messages.append('{} completed mission: {} (+{} xp)'.format(character._name, current_mission._name, xp_gain))
+        character.add_xp(xp_gain)
+        self.__queue_private_message(character._owner_id, current_mission._epilogue)
+        self.__queue_private_message(character._owner_id, 'You completed {} and were awarded {} XP!'.format(current_mission._name, xp_gain))
+        self.__start_next_mission(character)
+
+    def __start_next_mission(self, character):
+        db = Session()
+        new_mission = self._mission_control.generate_mission_for(character, db)
+        db.close()
+
+        prev_mission = character.get_current_mission()
+        aux_msg = ''
+        if prev_mission.id == new_mission.id:
+            aux_msg = 'Deja vu...\n'
+        character.set_new_mission(new_mission)
+        self._public_messages.append('{} started mission: {}'.format(character._name, new_mission._name))
+        self.__queue_private_message(character._owner_id, 'You have started a new mission.\n{}\n{}'.format(aux_msg, new_mission.get_info_card()))
+
+    async def __print_message_queues(self):
         """Prints all pending game loop messages."""
-        if self.public_messages:
-            concat = '\n'.join(self.public_messages)
-            self.public_messages = []
-            await discord_output.public(self.bot, concat)
+        if self._public_messages:
+            concat = '\n'.join(self._public_messages)
+            self._public_messages = []
+            await discord_output.public(self._bot, concat)
 
-        if self.private_messages:
-            for user in self.private_messages:
-                concat = '\n'.join(self.private_messages[user])
-                await discord_output.private(self.bot, user, concat)
-            self.private_messages = {}
+        if self._private_messages:
+            for user_id in self._private_messages:
+                concat = '\n'.join(self._private_messages[user_id])
+                user = await self._bot.get_user_info(user_id)
+                await discord_output.private(self._bot, user, concat)
+            self._private_messages = {}
 
+    def __save_game_to_db(self):
+        db = Session()
+        for c in self._characters.values():
+            c.save(db)
+        db.commit()
+        db.close()
 
-    async def game_loop(self):
+    def __queue_private_message(self, user, message):
+        if user not in self._private_messages:
+            self._private_messages[user] = []
+        self._private_messages[user].append(message)
+
+    async def __game_loop(self):
         """Main game loop."""
-        await self.bot.wait_until_ready()
+        await self._bot.wait_until_ready()
         print('Game loop started.')
 
         while True:
-            await self.print_message_queues()
+            await self.__print_message_queues()
             await asyncio.sleep(1)
 
             # synchronous logic only below
-            self.game_uptime += 1
-            for c in self.characters.values():
-                c.add_xp(1)
+            self._game_uptime += 1
+            for c in self._characters.values():
+                if c.get_current_mission() is None:
+                    self.__start_next_mission(c)
+                else:
+                    c.run_current_mission()
 
-            if self.game_uptime % int(config.db_commit_wait) == 0:
-                self.db.commit()
+            if self._game_uptime % int(config.db_commit_wait) == 0:
+                print('saving game state')
+                self.__save_game_to_db()
 
 def setup(bot):
+    """Cog setup"""
     bot.add_cog(Grinder(bot))
     print('Added Grinder')
