@@ -215,7 +215,7 @@ class Grinder():
 
         prev_mission = character.get_current_mission()
         aux_msg = ''
-        if prev_mission.id == new_mission.id:
+        if prev_mission is not None and prev_mission.id == new_mission.id:
             aux_msg = 'Deja vu...\n'
         character.set_new_mission(new_mission)
         self.__queue_private_message(character._owner_id, 'You have started a new mission.\n{}\n{}'.format(aux_msg, new_mission.get_info_card()))
