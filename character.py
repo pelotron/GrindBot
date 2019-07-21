@@ -70,7 +70,7 @@ class Character(DbBase):
 
         if level > self._level:
             # account for possible multi-level-up
-            for i in range(self._level, level):
+            for _ in range(self._level, level):
                 self._level += 1
                 for signal in self._signal_level_up:
                     signal(self)
