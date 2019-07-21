@@ -203,7 +203,6 @@ class Grinder():
         """Callback bound to character mission complete signals"""
         current_mission = character.get_current_mission()
         xp_gain = current_mission.get_variable_xp_reward()
-        self._public_messages.append('{} completed mission: {} (+{} xp)'.format(character._name, current_mission._name, xp_gain))
         character.add_xp(xp_gain)
         self.__queue_private_message(character._owner_id, current_mission._epilogue)
         self.__queue_private_message(character._owner_id, 'You completed {} and were awarded {} XP!'.format(current_mission._name, xp_gain))
@@ -219,7 +218,6 @@ class Grinder():
         if prev_mission.id == new_mission.id:
             aux_msg = 'Deja vu...\n'
         character.set_new_mission(new_mission)
-        self._public_messages.append('{} started mission: {}'.format(character._name, new_mission._name))
         self.__queue_private_message(character._owner_id, 'You have started a new mission.\n{}\n{}'.format(aux_msg, new_mission.get_info_card()))
 
     async def __print_message_queues(self):
