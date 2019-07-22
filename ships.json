@@ -1,0 +1,35 @@
+[
+    {
+        "py/object": "ship.ShipJson",
+        "model": "Robin",
+        "cost": 35000,
+        "mass": 500,
+        "cargo_capacity": 250,
+        "fuel_capacity": 150,
+        "weapon_hardpoints": 1,
+        "aux_hardpoints": 3,
+        "description": "Common starter ship"
+    },
+    {
+        "py/object": "ship.ShipJson",
+        "model": "Sledge",
+        "cost": 200000,
+        "mass": 1500,
+        "cargo_capacity": 1500,
+        "fuel_capacity": 300,
+        "weapon_hardpoints": 1,
+        "aux_hardpoints": 4,
+        "description": "Common hauler"
+    },
+    {
+        "py/object": "ship.ShipJson",
+        "model": "Arrow",
+        "cost": 270000,
+        "mass": 1100,
+        "cargo_capacity": 200,
+        "fuel_capacity": 100,
+        "weapon_hardpoints": 3,
+        "aux_hardpoints": 3,
+        "description": "Common fighter"
+    }
+]

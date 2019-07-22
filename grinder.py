@@ -24,26 +24,41 @@ import random
 
 # Grinder modules
 from character import Character
+from hangar import Hangar
 from main import Session, config, config_file, is_admin
 import discord_output
 import json_util
 import mission
 from mission_control import MissionControl
 
+# it would be nice for Grinder to own its own instance of this,
+# but it seems that this must be static since command checks can't use instance methods
+_characters = {}
+
+# command check that enforces character existence
+def has_character(ctx):
+    return ctx.message.author.id in _characters.keys()
+
 class Grinder():
     """
     Class that runs HeroGrinder game logic.
     Implemented as a Discord bot cog.
+
     """
 
     def __init__(self, bot):
         self._bot = bot
-        self._characters = {}
+        _characters = {}
         self._game_uptime = 0
 
         # message queues
         self._public_messages = []
         self._private_messages = {} # user: list(messages)
+
+        # hanger manages its own DB connection - TODO - do this in MissionControl?
+        ships = json_util.read_object_from_file('ships.json')
+        self._hangar = Hangar()
+        self._hangar.update_db_ship_blueprints(ships)
 
         random.seed()
         db = Session()
@@ -76,7 +91,7 @@ class Grinder():
     def __init_character(self, character):
         character.connect_level_up(self.__announce_character_level)
         character.connect_mission_complete(self.__mission_complete)
-        self._characters[character._owner_id] = character
+        _characters[character._owner_id] = character
 
     @commands.command(pass_context = True)
     async def create_character(self, ctx, *args):
@@ -84,8 +99,8 @@ class Grinder():
         player = ctx.message.author.id
         msg = ''
 
-        if player in self._characters:
-            msg = 'You already have a character named %s.' % self._characters[player]._name
+        if player in _characters:
+            msg = 'You already have a character named %s.' % _characters[player]._name
         elif len(args) == 0:
             msg = 'You must name your character.'
         elif len(args[0]) > 30:
@@ -112,14 +127,14 @@ class Grinder():
         """Delete's a player's character"""
         player = ctx.message.author.id
         msg = ''
-        if player in self._characters:
-            c = self._characters[player]
+        if player in _characters:
+            c = _characters[player]
             db = Session()
             db.delete(c)
             db.commit()
             db.close()
             name = c._name
-            del self._characters[player]
+            del _characters[player]
             msg = '%s has been deleted.' % name
             self._public_messages.append('%s stumbled out an airlock and died.' % name)
         else:
@@ -132,8 +147,8 @@ class Grinder():
         """Reports a player's progress."""
         player = ctx.message.author.id
         msg = ''
-        if player in self._characters:
-            c = self._characters[player]
+        if player in _characters:
+            c = _characters[player]
             msg = c.get_progress()
         else:
             msg = 'Create a character first.'
@@ -162,6 +177,76 @@ class Grinder():
         await discord_output.private(self._bot, ctx.message.author, msg)
 
     @commands.command(pass_context = True)
+    @commands.check(has_character)
+    async def hangar(self, ctx, *args):
+        """
+        Interact with the station's ship hangar.
+        usage:  !hangar [buy (ship model name)]
+        """
+
+        msg = 'Sorry, command not understood.'
+        owner_id = ctx.message.author.id
+        # TODO - eventually this should only work when a player is docked
+
+        if len(args) == 0:
+            # get the player's owned ships
+            ships = self._hangar.get_owned_ships(owner_id)
+            if len(ships) == 0:
+                msg = 'You don\'t own any ships.'
+            else:
+                msg = 'Your ships:\n\n'
+                msg += '\n\n'.join(s.get_info_card() for s in ships)
+        else:
+            cmd = args[0]
+            if 'buy' == cmd:
+                ships = self._hangar.get_ship_blueprints()
+                if len(args) == 1:
+                    # just return the list of ships
+                    msg = 'Ships available to buy at this hangar:\n\n'
+                    msg += '\n\n'.join(s.get_info_card() for s in ships)
+                else:
+                    subcmd = args[1]
+                    blueprint = [s for s in ships if s._model == subcmd]
+                    if len(blueprint) == 1:
+                        # purchase success
+                        new_ship = self._hangar.purchase_ship(owner_id, blueprint[0])
+                        if new_ship is not None:
+                            # auto-board for now
+                            _characters[owner_id].set_current_ship(new_ship)
+                            msg = 'You successfully bought and boarded a {}!'.format(new_ship.get_model())
+                            self._public_messages.append('{} just purchased a ship! Model: {}'.format(_characters[owner_id]._name, new_ship.get_model()))
+
+        await discord_output.private(self._bot, ctx.message.author, msg)
+
+    @commands.command(pass_context = True)
+    @commands.check(has_character)
+    async def ship(self, ctx, *args):
+        """
+        Interact with your current ship.
+        usage:  !ship [name (ship name)]
+        """
+
+        msg = 'Sorry, command not understood... try !help ship'
+        owner_id = ctx.message.author.id
+        character = _characters[owner_id]
+        ship = character.get_current_ship()
+
+        if len(args) == 0:
+            msg = 'You are not aboard a ship.'
+            if ship is not None:
+                name = ship.get_name()
+                msg = 'You are aboard {}.\n\n{}'.format(
+                    name if name is not None else 'an unnamed ship (you can name it with !ship name [name])', ship.get_info_card())
+        elif len(args) == 2 and args[0] == 'name':
+            msg = 'You must board a ship before naming it.'
+            if ship is not None:
+                ship.set_name(args[1])
+                msg = 'You have christened this ship \'{}\'.'.format(args[1])
+
+        await discord_output.private(self._bot, ctx.message.author, msg)
+
+
+    @commands.command(pass_context = True)
     async def scoreboard(self, ctx):
         """Prints a scoreboard of all characters."""
         namestr = 'Name'
@@ -172,7 +257,7 @@ class Grinder():
         xplen = len(xpstr)
         levellen = len(levelstr)
 
-        for c in self._characters.values():
+        for c in _characters.values():
             if len(c._name) > namelen:
                 namelen = len(c._name)
             if len(str(c.get_xp())) > xplen:
@@ -189,7 +274,7 @@ class Grinder():
         msg += '-' * (levellen + namelen + xplen + 6)
         msg += '\n'
 
-        for c in sorted(self._characters.values(), key = lambda char: char.get_xp(), reverse = True):
+        for c in sorted(_characters.values(), key = lambda char: char.get_xp(), reverse = True):
             msg += layout.format(c.get_level(), c._name, c.get_xp(), l = levellen, n = namelen, x = xplen)
 
         await discord_output.private(self._bot, ctx.message.author, msg)
@@ -236,7 +321,7 @@ class Grinder():
 
     def __save_game_to_db(self):
         db = Session()
-        for c in self._characters.values():
+        for c in _characters.values():
             c.save(db)
         db.commit()
         db.close()
@@ -257,7 +342,7 @@ class Grinder():
 
             # synchronous logic only below
             self._game_uptime += 1
-            for c in self._characters.values():
+            for c in _characters.values():
                 if c.get_current_mission() is None:
                     self.__start_next_mission(c)
                 else:

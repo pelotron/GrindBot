@@ -30,12 +30,14 @@ class Character(DbBase):
 
     id = Column(Integer, primary_key = True)
     _name = Column(String)
-    _owner_id = Column(String)
+    _owner_id = Column(String) # Discord User ID
     _xp = Column(Integer)
     _tier = Column(Integer)
     _current_mission_id = Column(Integer, ForeignKey('mission.id'))
     _current_mission = relationship('Mission')
     _current_mission_ticks = Column(Integer)
+    _current_ship_id = Column(Integer, ForeignKey('ship.id'))
+    _current_ship = relationship('Ship', lazy='joined')
 
     def __init__(self, name, owner_id):
         self._name = name
@@ -45,6 +47,8 @@ class Character(DbBase):
         self._level = 0
         self._current_mission_ticks = 0
         self._current_mission = None
+        self._current_ship = None
+
         self._signal_level_up = []
         self._signal_mission_complete = []
 
@@ -105,6 +109,12 @@ class Character(DbBase):
         self._current_mission = mission
         self._current_mission_ticks = 0
         mission.connect_complete(self.__mission_complete)
+
+    def set_current_ship(self, ship):
+        self._current_ship = ship
+
+    def get_current_ship(self):
+        return self._current_ship
 
     def run_current_mission(self):
         self._current_mission.run()

@@ -26,6 +26,7 @@ import json_util
 # database models
 import db_base
 import character
+import ship
 
 config_file = 'config.json'
 startup_extensions = ['grinder']
@@ -44,7 +45,6 @@ db_engine = create_engine('sqlite:///%s' % config.db_file, echo = False)
 db_base.DbBase.metadata.create_all(db_engine, checkfirst = True)
 
 Session = sessionmaker(bind = db_engine, expire_on_commit = False)
-#Session.configure(bind = db_engine, expire_on_)
 
 def is_admin(ctx):
     ids = [a['id'] for a in config.admins]
