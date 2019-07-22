@@ -55,6 +55,7 @@ class Hangar():
     def get_owned_ships(self, owner_id):
         db = Session()
         ships = db.query(Ship).filter(Ship._owner_id == owner_id).all()
+        db.close()
         return ships
 
     def purchase_ship(self, owner_id, blueprint):
