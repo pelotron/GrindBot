@@ -178,58 +178,15 @@ class Grinder():
 
     @commands.command(pass_context = True)
     @commands.check(has_character)
-    async def hangar(self, ctx, *args):
-        """
-        Interact with the station's ship hangar.
-        usages:
-         !hangar
-         !hangar buy
-         !hangar buy (ship model name)
-        """
-
-        msg = 'Sorry, command not understood... try !help hangar'
-        owner_id = ctx.message.author.id
-        # TODO - eventually this should only work when a player is docked
-
-        if len(args) == 0:
-            # get the player's owned ships
-            ships = self._hangar.get_owned_ships(owner_id)
-            if len(ships) == 0:
-                msg = 'You don\'t own any ships.'
-            else:
-                msg = 'Your ships:\n\n'
-                msg += '\n\n'.join(s.get_info_card() for s in ships)
-        else:
-            cmd = args[0]
-            if 'buy' == cmd:
-                ships = self._hangar.get_ship_blueprints()
-                if len(args) == 1:
-                    # just return the list of ships
-                    msg = 'Ships available to buy at this hangar:\n\n'
-                    msg += '\n\n'.join(s.get_info_card() for s in ships)
-                else:
-                    subcmd = args[1]
-                    blueprint = [s for s in ships if s._model == subcmd]
-                    if len(blueprint) == 1:
-                        # purchase success
-                        new_ship = self._hangar.purchase_ship(owner_id, blueprint[0])
-                        if new_ship is not None:
-                            # auto-board for now
-                            _characters[owner_id].set_current_ship(new_ship)
-                            msg = 'You successfully bought and boarded a {}!'.format(new_ship.get_model())
-                            self._public_messages.append('{} just purchased a ship! Model: {}'.format(_characters[owner_id]._name, new_ship.get_model()))
-
-        await discord_output.private(self._bot, ctx.message.author, msg)
-
-    @commands.command(pass_context = True)
-    @commands.check(has_character)
     async def ship(self, ctx, *args):
         """
         Interact with your current ship.
         usages:
          !ship
+         !ship list
          !ship name (ship name)
          !ship board (ship name)
+         !ship buy (model name)
          !ship sell (ship name)
         """
 
@@ -245,11 +202,22 @@ class Grinder():
                 msg = 'You are aboard {}.\n\n{}'.format(
                     name if name is not None else 'an unnamed ship (you can name it with !ship name [name])', current_ship.get_info_card())
         else:
-            if args[0] == 'name':
+            if args[0] == 'list':
+                ships = self._hangar.get_owned_ships(owner_id)
+                if len(ships) == 0:
+                    msg = 'You don\'t own any ships.'
+                else:
+                    msg = 'Your ships:\n\n'
+                    msg += '\n\n'.join(s.get_info_card() for s in ships)
+            elif args[0] == 'name':
                 msg = 'You must board a ship before naming it.'
                 if len(args) >= 2 and current_ship is not None:
                     current_ship.set_name(args[1])
                     msg = 'You have christened this ship \'{}\'.'.format(args[1])
+                    db = Session()
+                    current_ship.save(db)
+                    db.commit()
+                    db.close()
             elif args[0] == 'board':
                 msg = 'Specify a ship\'s name to board.'
                 if len(args) >= 2:
@@ -259,6 +227,23 @@ class Grinder():
                             character.set_current_ship(s)
                             msg = 'You boarded {}.'.format(s.get_name())
                             break
+            elif args[0] == 'buy':
+                ships = self._hangar.get_ship_blueprints()
+                if len(args) == 1:
+                    # just return the list of ships
+                    msg = 'Ships available to buy at this hangar:\n\n'
+                    msg += '\n\n'.join(s.get_info_card() for s in ships)
+                else:
+                    subcmd = args[1]
+                    blueprint = [s for s in ships if s._model == subcmd]
+                    if len(blueprint) == 1:
+                        # purchase success
+                        new_ship = self._hangar.purchase_ship(owner_id, blueprint[0])
+                        if new_ship is not None:
+                            # auto-board for now
+                            _characters[owner_id].set_current_ship(new_ship)
+                            msg = 'You successfully bought and boarded a {}!'.format(new_ship.get_model())
+                            self._public_messages.append('{} just purchased a ship!  (Model: {})'.format(_characters[owner_id]._name, new_ship.get_model()))
             elif args[0] == 'sell':
                 msg = 'Specify a ship\'s name to sell.'
                 if len(args) >= 2:
@@ -269,7 +254,7 @@ class Grinder():
                                 character.set_current_ship(None)
                             self._hangar.sell_ship(s)
                             msg = 'You sold {}!'.format(s.get_name())
-                            self._public_messages.append('{} sold their ship \'{}\'!  (Model:  {})'.format(
+                            self._public_messages.append('{} sold their ship \'{}\'!  (Model: {})'.format(
                                 character.get_name(), s.get_name(), s.get_model()))
 
         await discord_output.private(self._bot, ctx.message.author, msg)
