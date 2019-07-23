@@ -55,7 +55,7 @@ class Grinder():
         self._public_messages = []
         self._private_messages = {} # user: list(messages)
 
-        # hanger manages its own DB connection - TODO - do this in MissionControl?
+        # hangar manages its own DB connection - TODO - do this in MissionControl?
         ships = json_util.read_object_from_file('ships.json')
         self._hangar = Hangar()
         self._hangar.update_db_ship_blueprints(ships)
@@ -181,10 +181,13 @@ class Grinder():
     async def hangar(self, ctx, *args):
         """
         Interact with the station's ship hangar.
-        usage:  !hangar [buy (ship model name)]
+        usages:
+         !hangar
+         !hangar buy
+         !hangar buy (ship model name)
         """
 
-        msg = 'Sorry, command not understood.'
+        msg = 'Sorry, command not understood... try !help hangar'
         owner_id = ctx.message.author.id
         # TODO - eventually this should only work when a player is docked
 
@@ -223,25 +226,51 @@ class Grinder():
     async def ship(self, ctx, *args):
         """
         Interact with your current ship.
-        usage:  !ship [name (ship name)]
+        usages:
+         !ship
+         !ship name (ship name)
+         !ship board (ship name)
+         !ship sell (ship name)
         """
 
         msg = 'Sorry, command not understood... try !help ship'
         owner_id = ctx.message.author.id
         character = _characters[owner_id]
-        ship = character.get_current_ship()
+        current_ship = character.get_current_ship()
 
         if len(args) == 0:
             msg = 'You are not aboard a ship.'
-            if ship is not None:
-                name = ship.get_name()
+            if current_ship is not None:
+                name = current_ship.get_name()
                 msg = 'You are aboard {}.\n\n{}'.format(
-                    name if name is not None else 'an unnamed ship (you can name it with !ship name [name])', ship.get_info_card())
-        elif len(args) == 2 and args[0] == 'name':
-            msg = 'You must board a ship before naming it.'
-            if ship is not None:
-                ship.set_name(args[1])
-                msg = 'You have christened this ship \'{}\'.'.format(args[1])
+                    name if name is not None else 'an unnamed ship (you can name it with !ship name [name])', current_ship.get_info_card())
+        else:
+            if args[0] == 'name':
+                msg = 'You must board a ship before naming it.'
+                if len(args) >= 2 and current_ship is not None:
+                    current_ship.set_name(args[1])
+                    msg = 'You have christened this ship \'{}\'.'.format(args[1])
+            elif args[0] == 'board':
+                msg = 'Specify a ship\'s name to board.'
+                if len(args) >= 2:
+                    ships = self._hangar.get_owned_ships(owner_id)
+                    for s in ships:
+                        if s.get_name() == args[1]:
+                            character.set_current_ship(s)
+                            msg = 'You boarded {}.'.format(s.get_name())
+                            break
+            elif args[0] == 'sell':
+                msg = 'Specify a ship\'s name to sell.'
+                if len(args) >= 2:
+                    ships = self._hangar.get_owned_ships(owner_id)
+                    for s in ships:
+                        if s.get_name() == args[1]:
+                            if s.id == current_ship.id:
+                                character.set_current_ship(None)
+                            self._hangar.sell_ship(s)
+                            msg = 'You sold {}!'.format(s.get_name())
+                            self._public_messages.append('{} sold their ship \'{}\'!  (Model:  {})'.format(
+                                character.get_name(), s.get_name(), s.get_model()))
 
         await discord_output.private(self._bot, ctx.message.author, msg)
 

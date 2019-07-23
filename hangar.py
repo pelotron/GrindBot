@@ -15,6 +15,8 @@ You should have received a copy of the GNU General Public License
 along with GrindBot.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+from character import Character
+import datetime
 import json_util
 from main import Session
 from ship import ShipBlueprint, Ship
@@ -64,11 +66,29 @@ class Hangar():
         ship = None
 
         if blueprint in self._ship_blueprints:
-            ship = Ship(owner_id, blueprint)
             db = Session()
+            char_name = db.query(Character).filter(owner_id == Character._owner_id).one().get_name()
+            ship_name = self.__generate_ship_name(char_name)
+            ship = Ship(owner_id, blueprint, ship_name)
             db.add(ship)
             db.commit()
             db.close()
 
         return ship
+
+    def sell_ship(self, ship):
+        db = Session()
+        db.delete(ship)
+        # TODO - transfer money to character
+        db.commit()
+        db.close()
+
+    def __generate_ship_name(self, char_name):
+        """Generates a license plate-like name based on the given char name"""
+        ship_name = '{}-{}'.format(
+            char_name[:3].upper(),
+            str(abs(hash(datetime.datetime.now())))[:3]
+        )
+        return ship_name
+
     

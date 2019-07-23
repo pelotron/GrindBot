@@ -84,9 +84,10 @@ class Ship(DbBase):
     _blueprint = relationship('ShipBlueprint', lazy='joined')
     _flight_status = Column(Enum(FlightStatus))
 
-    def __init__(self, owner_id, blueprint):
+    def __init__(self, owner_id, blueprint, name):
         self._owner_id = owner_id
         self._blueprint = blueprint
+        self._name = name
         self._flight_status = FlightStatus.DOCKED
 
     def set_name(self, name):

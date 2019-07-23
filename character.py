@@ -104,6 +104,9 @@ class Character(DbBase):
     def get_xp(self):
         return self._xp
 
+    def get_name(self):
+        return self._name
+
     def set_new_mission(self, mission):
         self._current_mission_id = mission.id
         self._current_mission = mission
