@@ -87,6 +87,9 @@ class Mission(DbBase):
             for signal in self._done_signal:
                 signal(self)
 
+    def get_name(self):
+        return self._name
+
     def get_progress_percent(self):
         """
         Gets the mission progress as a percentage

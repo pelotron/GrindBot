@@ -54,39 +54,37 @@ class Hangar():
     def get_ship_blueprints(self):
         return self._ship_blueprints
 
-    def get_owned_ships(self, owner_id):
+    def get_owned_ships(self, character):
         db = Session()
-        ships = db.query(Ship).filter(Ship._owner_id == owner_id).all()
+        ships = db.query(Ship).filter(Ship._owner_id == character.id).all()
         db.close()
         return ships
 
-    def purchase_ship(self, owner_id, blueprint):
-        # TODO - implement character wallets
-        # for now just succeed
+    def purchase_ship(self, character, blueprint):
         ship = None
 
         if blueprint in self._ship_blueprints:
+            character.subtract_credits(blueprint.get_cost())
             db = Session()
-            char_name = db.query(Character).filter(owner_id == Character._owner_id).one().get_name()
-            ship_name = self.__generate_ship_name(char_name)
-            ship = Ship(owner_id, blueprint, ship_name)
+            ship_name = self.__generate_ship_name(character)
+            ship = Ship(character.id, blueprint, ship_name)
             db.add(ship)
             db.commit()
             db.close()
 
         return ship
 
-    def sell_ship(self, ship):
+    def sell_ship(self, character, ship):
+        character.add_credits(ship.get_cost())
         db = Session()
         db.delete(ship)
-        # TODO - transfer money to character
         db.commit()
         db.close()
 
-    def __generate_ship_name(self, char_name):
-        """Generates a license plate-like name based on the given char name"""
+    def __generate_ship_name(self, character):
+        """Generates a license plate-like name based on the given character"""
         ship_name = '{}-{}'.format(
-            char_name[:3].upper(),
+            character.get_name()[:3].upper(),
             str(abs(hash(datetime.datetime.now())))[:3]
         )
         return ship_name

@@ -20,6 +20,7 @@ from discord.ext import commands
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+import config
 import discord_output
 import json_util
 
@@ -28,10 +29,9 @@ import db_base
 import character
 import ship
 
-config_file = 'config.json'
 startup_extensions = ['grinder']
 
-config = json_util.read_object_from_file(config_file)
+config = config.get()
 
 bot_description = '''
 bot-in-progress

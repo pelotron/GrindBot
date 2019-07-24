@@ -15,6 +15,16 @@ You should have received a copy of the GNU General Public License
 along with GrindBot.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+import json_util
+
+_config_file = 'config.json'
+
+def get():
+    return json_util.read_object_from_file(_config_file)
+
+def write(config):
+    json_util.write_object_to_file(_config_file, config)
+
 class Config(object):
     """GrindBot config data model"""
     def __init__(self, token, db_file, db_commit_wait, admins, channel_ids):

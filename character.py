@@ -21,7 +21,7 @@ from sqlalchemy.orm import relationship
 
 from mission import Mission
 
-def get_level(xp):
+def calc_level(xp):
     level = int((xp / float(100)) ** (1/1.5)) + 1
     return level
 
@@ -33,6 +33,7 @@ class Character(DbBase):
     _owner_id = Column(String) # Discord User ID
     _xp = Column(Integer)
     _tier = Column(Integer)
+    _credits = Column(Integer)
     _current_mission_id = Column(Integer, ForeignKey('mission.id'))
     _current_mission = relationship('Mission')
     _current_mission_ticks = Column(Integer)
@@ -45,16 +46,16 @@ class Character(DbBase):
         self._tier = 1
         self._xp = 0
         self._level = 0
+        self._credits = 250000 # this may need to be a config value
         self._current_mission_ticks = 0
         self._current_mission = None
         self._current_ship = None
-
         self._signal_level_up = []
         self._signal_mission_complete = []
 
     @orm.reconstructor
     def init_on_load(self):
-        self._level = get_level(self._xp)
+        self._level = calc_level(self._xp)
         self._signal_level_up = []
         self._signal_mission_complete = []
         if self._current_mission_id is None:
@@ -70,7 +71,7 @@ class Character(DbBase):
     def add_xp(self, xp):
         """Adds xp to this character."""
         self._xp += xp
-        level = get_level(self._xp)
+        level = calc_level(self._xp)
 
         if level > self._level:
             # account for possible multi-level-up
@@ -92,11 +93,6 @@ class Character(DbBase):
         completes its current mission. This character is passed as the argument.
         """
         self._signal_mission_complete.append(func)
-
-    def get_progress(self):
-        """Gets a string summarizing the character's state."""
-        return '{} is level {} with {} xp.\nCurrent mission: {}, {}% complete'.format(
-            self._name, get_level(self._xp), self._xp, self._current_mission._name, self._current_mission.get_progress_percent())
 
     def get_level(self):
         return self._level
@@ -124,6 +120,34 @@ class Character(DbBase):
 
     def get_current_mission(self):
         return self._current_mission
+
+    def can_afford(self, amount):
+        return self._credits >= amount
+
+    def get_credits(self):
+        return self._credits
+
+    def subtract_credits(self, amount):
+        if self.can_afford(amount):
+            self._credits -= amount
+        else:
+            raise Exception('{} has {} and can\'t pay {}. Call can_afford()'.format(
+                self._name, self._credits, amount))
+
+    def add_credits(self, amount):
+        self._credits += amount
+
+    def get_info_card(self):
+        lines = []
+        lines.append('Name:             {}'.format(self._name))
+        lines.append('Level:            {}'.format(self._level))
+        lines.append('XP:               {}'.format(self._xp))
+        lines.append('Credits:          {}'.format(self._credits))
+        m = self._current_mission
+        lines.append('Current mission:  {} ({}%)'.format(m.get_name(), m.get_progress_percent()))
+        if self._current_ship is not None:
+            lines.append('Currently aboard your ship \'{}\''.format(self._current_ship.get_name()))
+        return '\n'.join(lines)
 
     def save(self, db):
         self._current_mission_ticks = self._current_mission.get_progress_ticks()

@@ -24,8 +24,9 @@ import random
 
 # Grinder modules
 from character import Character
+import config
 from hangar import Hangar
-from main import Session, config, config_file, is_admin
+from main import Session, is_admin
 import discord_output
 import json_util
 import mission
@@ -50,6 +51,7 @@ class Grinder():
         self._bot = bot
         _characters = {}
         self._game_uptime = 0
+        self._config = config.get()
 
         # message queues
         self._public_messages = []
@@ -143,13 +145,13 @@ class Grinder():
         await discord_output.private(self._bot, ctx.message.author, msg)
 
     @commands.command(pass_context = True)
-    async def progress(self, ctx):
-        """Reports a player's progress."""
+    async def char(self, ctx):
+        """Gets your current character sheet."""
         player = ctx.message.author.id
         msg = ''
         if player in _characters:
             c = _characters[player]
-            msg = c.get_progress()
+            msg = c.get_info_card()
         else:
             msg = 'Create a character first.'
 
@@ -161,11 +163,11 @@ class Grinder():
         """[ADMIN] Gets/sets the number of game ticks between database commits."""
         msg = ''
         if len(args) == 0:
-            msg = 'DB commit wait is %s ticks.' % config.db_commit_wait
+            msg = 'DB commit wait is %s ticks.' % self._config.db_commit_wait
         else:
-            config.db_commit_wait = args[0]
-            json_util.write_object_to_file(config_file, config)
-            msg = 'DB commit wait set to %s ticks.' % config.db_commit_wait
+            self._config.db_commit_wait = args[0]
+            config.write(self._config)
+            msg = 'DB commit wait set to %s ticks.' % self._config.db_commit_wait
 
         await discord_output.private(self._bot, ctx.message.author, msg)
 
@@ -203,7 +205,7 @@ class Grinder():
                     name if name is not None else 'an unnamed ship (you can name it with !ship name [name])', current_ship.get_info_card())
         else:
             if args[0] == 'list':
-                ships = self._hangar.get_owned_ships(owner_id)
+                ships = self._hangar.get_owned_ships(character)
                 if len(ships) == 0:
                     msg = 'You don\'t own any ships.'
                 else:
@@ -221,9 +223,9 @@ class Grinder():
             elif args[0] == 'board':
                 msg = 'Specify a ship\'s name to board.'
                 if len(args) >= 2:
-                    ships = self._hangar.get_owned_ships(owner_id)
+                    ships = self._hangar.get_owned_ships(character)
                     for s in ships:
-                        if s.get_name() == args[1]:
+                        if s.get_name().lower() == args[1].lower():
                             character.set_current_ship(s)
                             msg = 'You boarded {}.'.format(s.get_name())
                             break
@@ -234,25 +236,32 @@ class Grinder():
                     msg = 'Ships available to buy at this hangar:\n\n'
                     msg += '\n\n'.join(s.get_info_card() for s in ships)
                 else:
-                    subcmd = args[1]
-                    blueprint = [s for s in ships if s._model == subcmd]
+                    subcmd = args[1].lower()
+                    blueprint = [s for s in ships if s.get_model().lower() == subcmd]
                     if len(blueprint) == 1:
-                        # purchase success
-                        new_ship = self._hangar.purchase_ship(owner_id, blueprint[0])
-                        if new_ship is not None:
-                            # auto-board for now
-                            _characters[owner_id].set_current_ship(new_ship)
-                            msg = 'You successfully bought and boarded a {}!'.format(new_ship.get_model())
-                            self._public_messages.append('{} just purchased a ship!  (Model: {})'.format(_characters[owner_id]._name, new_ship.get_model()))
+                        bp = blueprint[0]
+                        if character.can_afford(bp.get_cost()):
+                            new_ship = self._hangar.purchase_ship(character, bp)
+                            if new_ship is not None:
+                                # auto-board for now
+                                character.set_current_ship(new_ship)
+                                msg = 'You successfully bought and boarded a {}!'.format(new_ship.get_model())
+                                self._public_messages.append('{} just purchased a ship!  (Model: {})'.format(
+                                    character.get_name(), new_ship.get_model()))
+                        else:
+                            msg = 'Sorry, you need {} more credits to purchase the {}.'.format(
+                                bp.get_cost() - character.get_credits(),
+                                bp.get_model()
+                            )
             elif args[0] == 'sell':
                 msg = 'Specify a ship\'s name to sell.'
                 if len(args) >= 2:
-                    ships = self._hangar.get_owned_ships(owner_id)
+                    ships = self._hangar.get_owned_ships(character)
                     for s in ships:
-                        if s.get_name() == args[1]:
-                            if s.id == current_ship.id:
+                        if s.get_name().lower() == args[1].lower():
+                            if current_ship is not None and s.id == current_ship.id:
                                 character.set_current_ship(None)
-                            self._hangar.sell_ship(s)
+                            self._hangar.sell_ship(character, s)
                             msg = 'You sold {}!'.format(s.get_name())
                             self._public_messages.append('{} sold their ship \'{}\'!  (Model: {})'.format(
                                 character.get_name(), s.get_name(), s.get_model()))
@@ -362,7 +371,7 @@ class Grinder():
                 else:
                     c.run_current_mission()
 
-            if self._game_uptime % int(config.db_commit_wait) == 0:
+            if self._game_uptime % int(self._config.db_commit_wait) == 0:
                 print('saving game state')
                 self.__save_game_to_db()
 

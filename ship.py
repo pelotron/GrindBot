@@ -60,6 +60,12 @@ class ShipBlueprint(DbBase):
         self._aux_hardpoints = json.aux_hardpoints
         self._description = json.description
 
+    def get_cost(self):
+        return self._cost
+
+    def get_model(self):
+        return self._model
+
     def get_info_card(self):
         lines = []
         lines.append('Model:                    {}'.format(self._model))
@@ -78,7 +84,7 @@ class Ship(DbBase):
     __tablename__ = 'ship'
 
     id = Column(Integer, primary_key = True)
-    _owner_id = Column(String) # Discord User ID
+    _owner_id = Column(String) # Character ID
     _name = Column(String)
     _blueprint_id = Column(Integer, ForeignKey('ship_blueprint.id'))
     _blueprint = relationship('ShipBlueprint', lazy='joined')
@@ -93,11 +99,14 @@ class Ship(DbBase):
     def set_name(self, name):
         self._name = name
 
-    def get_model(self):
-        return self._blueprint._model
-
     def get_name(self):
         return self._name
+
+    def get_cost(self):
+        return self._blueprint.get_cost()
+
+    def get_model(self):
+        return self._blueprint.get_model()
 
     def get_info_card(self):
         lines = []
