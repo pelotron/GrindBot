@@ -47,7 +47,7 @@ class MissionControl():
 
         if current_mission is not None:
             # Choose from branching missions if any
-            mission_choices = db.query(Mission).filter(Mission._parent_id == current_mission.id).all()
+            mission_choices = current_mission._branches
 
         if len(mission_choices) == 0:
             # Choose from root missions
