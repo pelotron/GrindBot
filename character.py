@@ -65,7 +65,7 @@ class Character(DbModel):
             self._current_mission.connect_complete(self.__mission_complete)
 
     def __repr__(self):
-        return '<Character(name = %s, xp = %d, owner_id = %s)>' % (
+        return '<Character(name = {}, xp = {}, owner_id = {})>'.format(
             self._name, self._xp, self._owner_id)
 
     def add_xp(self, xp):

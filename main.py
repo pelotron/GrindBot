@@ -41,7 +41,7 @@ def is_admin(ctx):
 
 @bot.event
 async def on_ready():
-    print('Logged in as %s, id %s' % (bot.user.name, bot.user.id))
+    print('Logged in as {}, id {}'.format(bot.user.name, bot.user.id))
 
 @bot.command()
 @commands.check(is_admin)

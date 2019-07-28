@@ -25,9 +25,9 @@ def read_object_from_file(json_file):
             content = f.read()
             return jsonpickle.decode(content)
     except FileNotFoundError:
-        print('File not found: %s' % json_file)
+        print('File not found: {}'.format(json_file))
     except json.JSONDecodeError:
-        print('Error decoding json file: %s' % json_file)
+        print('Error decoding json file: {}'.format(json_file))
     return None
 
 def read_collection_from_file(json_file, obj_hook = None):
@@ -36,7 +36,7 @@ def read_collection_from_file(json_file, obj_hook = None):
         with open(json_file, 'r') as f:
             return json.load(f, object_hook = obj_hook)
     except FileNotFoundError:
-        print('File not found: %s' % json_file)
+        print('File not found: {}'.format(json_file))
     return None
 
 def write_object_to_file(filename, data):

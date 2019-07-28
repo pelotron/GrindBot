@@ -84,7 +84,7 @@ class Grinder():
         for c in characters:
             db.expunge(c) # detach object from db
             self.__init_character(c)
-            print('Loaded %s' % c)
+            print('Loaded {}'.format(c))
 
     def __init_character(self, character):
         character.connect_level_up(self.__announce_character_level)
@@ -98,7 +98,7 @@ class Grinder():
         msg = ''
 
         if player in _characters:
-            msg = 'You already have a character named %s.' % _characters[player]._name
+            msg = 'You already have a character named {}.'.format(_characters[player]._name)
         elif len(args) == 0:
             msg = 'You must name your character.'
         elif len(args[0]) > 30:
@@ -112,8 +112,8 @@ class Grinder():
             db.expunge(c)
 
             self.__init_character(c)
-            msg = 'Created character %s!' % name
-            self._public_messages.append('%s has entered the world!' % name)
+            msg = 'Created character {}!'.format(name)
+            self._public_messages.append('{} has entered the world!'.format(name))
 
         await discord_output.private(self._bot, ctx.message.author, msg)
 
@@ -128,8 +128,8 @@ class Grinder():
             db.commit()
             name = c._name
             del _characters[player]
-            msg = '%s has been deleted.' % name
-            self._public_messages.append('%s stumbled out an airlock and died.' % name)
+            msg = '{} has been deleted.'.format(name)
+            self._public_messages.append('{} stumbled out an airlock and died.'.format(name))
         else:
             msg = 'You do not have a live character.'
 
@@ -154,11 +154,11 @@ class Grinder():
         """[ADMIN] Gets/sets the number of game ticks between database commits."""
         msg = ''
         if len(args) == 0:
-            msg = 'DB commit wait is %s ticks.' % self._config.db_commit_wait
+            msg = 'DB commit wait is {} ticks.'.format(self._config.db_commit_wait)
         else:
             self._config.db_commit_wait = args[0]
             config.write(self._config)
-            msg = 'DB commit wait set to %s ticks.' % self._config.db_commit_wait
+            msg = 'DB commit wait set to {} ticks.'.format(self._config.db_commit_wait)
 
         await discord_output.private(self._bot, ctx.message.author, msg)
 
@@ -166,7 +166,7 @@ class Grinder():
     async def uptime(self, ctx):
         """Gets Grinder's uptime."""
         time = str(datetime.timedelta(seconds = self._game_uptime))
-        msg = 'Grinder has been running for %s.' % time
+        msg = 'Grinder has been running for {}.'.format(time)
         await discord_output.private(self._bot, ctx.message.author, msg)
 
     @commands.command(pass_context = True)
@@ -293,7 +293,7 @@ class Grinder():
 
     def __announce_character_level(self, character):
         """Callback bound to characters that queues a level-up announcement."""
-        msg = '%s is now level %s (%d XP)!' % (character._name, character.get_level(), character.get_xp())
+        msg = '{} is now level {} ({} XP)!'.format(character._name, character.get_level(), character.get_xp())
         self._public_messages.append(msg)
 
     def __mission_complete(self, character):

@@ -31,10 +31,10 @@ async def public(bot, message):
         channel = bot.get_channel(cid)
 
         if channel is None:
-            print('Unable to find channel %s.  Found:' % cid)
+            print('Unable to find channel {}.  Found:'.format(cid))
             for s in bot.servers:
                 for c in s.channels:
-                    print (' %s - %s' % (c.name, c.id))
+                    print (' {} - {}'.format(c.name, c.id))
         else:
             await bot.send_message(channel, pretty_print(message))
 
