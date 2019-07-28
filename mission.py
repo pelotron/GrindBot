@@ -15,7 +15,7 @@ You should have received a copy of the GNU General Public License
 along with GrindBot.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-from db_base import DbBase
+from database import DbModel
 from sqlalchemy import Column, Integer, String, ForeignKey, orm
 from sqlalchemy.orm import relationship
 import random
@@ -30,7 +30,7 @@ class MissionJson(object):
         self.tier = tier
         self.branches = branches
 
-class Mission(DbBase):
+class Mission(DbModel):
     """
     Hierarchecal structure that models Missions. Missions can have arbitary numbers
     of nested branches, so the class is implemented as a node in a tree.
@@ -46,7 +46,7 @@ class Mission(DbBase):
     _time_required = Column(Integer)
     _tier = Column(Integer)
     _parent_id = Column(Integer, ForeignKey('mission.id'))
-    _branches = relationship('Mission')
+    _branches = relationship('Mission', lazy='joined', join_depth=10)
 
     def __init__(self, json: MissionJson):
         self.update_data(json)

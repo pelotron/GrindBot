@@ -16,6 +16,7 @@ along with GrindBot.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import character
+from database import db
 import json_util
 from mission import Mission
 import random
@@ -29,13 +30,14 @@ class MissionControl():
     def __init__(self):
         self._mission_tree = json_util.read_object_from_file('missions.json')
 
-    def update_db_missions(self, db):
+    def update_db_missions(self):
         """
         Updates the DB with missions read from the missions json file
         """
-        self.__update_db_missions(self._mission_tree, db)
+        self.__update_db_missions(self._mission_tree)
+        db.commit()
 
-    def generate_mission_for(self, character, db):
+    def generate_mission_for(self, character):
         """
         Generates a mission for the given character.
         """
@@ -59,7 +61,7 @@ class MissionControl():
 
         return new_mission
 
-    def __update_db_missions(self, mission_tree, db):
+    def __update_db_missions(self, mission_tree):
         """
         Postorder traversal of a list of MissionJson objects that converts them into
         missions that are stored in the DB.  Recursive.
@@ -68,7 +70,7 @@ class MissionControl():
 
         for mission in mission_tree:
             # recurse down to leaf nodes
-            child_dbm_list = self.__update_db_missions(mission.branches, db)
+            child_dbm_list = self.__update_db_missions(mission.branches)
 
             db_mission = None
 

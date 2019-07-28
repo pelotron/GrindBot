@@ -17,21 +17,15 @@ along with GrindBot.  If not, see <http://www.gnu.org/licenses/>.
 
 import discord
 from discord.ext import commands
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
 import config
+from database import db
 import discord_output
 import json_util
 
-# database models
-import db_base
-import character
-import ship
-
 startup_extensions = ['grinder']
 
-config = config.get()
+_config = config.get()
 
 bot_description = '''
 bot-in-progress
@@ -41,13 +35,8 @@ bot-in-progress
 
 bot = commands.Bot(command_prefix = '!', description = bot_description, pm_help = True)
 
-db_engine = create_engine('sqlite:///%s' % config.db_file, echo = False)
-db_base.DbBase.metadata.create_all(db_engine, checkfirst = True)
-
-Session = sessionmaker(bind = db_engine, expire_on_commit = False)
-
 def is_admin(ctx):
-    ids = [a['id'] for a in config.admins]
+    ids = [a['id'] for a in _config.admins]
     return ctx.message.author.id in ids
 
 @bot.event
@@ -85,7 +74,7 @@ async def unload(ctx, extension_name : str):
 @bot.command(pass_context = True)
 async def admins(ctx):
     """Print the list of admins."""
-    adminnames = [a['name'] for a in config.admins]
+    adminnames = [a['name'] for a in _config.admins]
     adminstring = '\n'.join(adminnames)
     await discord_output.private(bot, ctx.message.author, adminstring)
 
@@ -95,7 +84,9 @@ if __name__ == '__main__':
         bot.load_extension(extension)
 
     try:
-        bot.run(config.token)
+        bot.run(_config.token)
     except Exception as e:
         print('Exception while running bot:')
         print(e)
+
+    db.close()

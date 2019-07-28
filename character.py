@@ -15,7 +15,7 @@ You should have received a copy of the GNU General Public License
 along with GrindBot.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-from db_base import DbBase
+from database import DbModel
 from sqlalchemy import Column, Integer, String, ForeignKey, orm
 from sqlalchemy.orm import relationship
 
@@ -25,7 +25,7 @@ def calc_level(xp):
     level = int((xp / float(100)) ** (1/1.5)) + 1
     return level
 
-class Character(DbBase):
+class Character(DbModel):
     __tablename__ = 'character'
 
     id = Column(Integer, primary_key = True)
@@ -110,6 +110,7 @@ class Character(DbBase):
         mission.connect_complete(self.__mission_complete)
 
     def set_current_ship(self, ship):
+        self._current_ship_id = None if ship is None else ship.id
         self._current_ship = ship
 
     def get_current_ship(self):

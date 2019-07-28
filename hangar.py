@@ -16,9 +16,9 @@ along with GrindBot.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 from character import Character
+from database import db
 import datetime
 import json_util
-from main import Session
 from ship import ShipBlueprint, Ship
 from sqlalchemy import orm
 
@@ -28,15 +28,12 @@ class Hangar():
     """
 
     def __init__(self):
-        db = Session()
         self._ship_blueprints = db.query(ShipBlueprint).all()
-        db.close()
 
     def update_db_ship_blueprints(self, blueprints):
         """
         Updates the DB with ship blueprints read from the ships json file
         """
-        db = Session()
         for ship in blueprints:
             try:
                 # update existing ships
@@ -48,16 +45,13 @@ class Hangar():
                 db.add(db_ship)
         db.commit()
         self._ship_blueprints = db.query(ShipBlueprint).all()
-        db.close()
         print('Ships loaded.')
 
     def get_ship_blueprints(self):
         return self._ship_blueprints
 
     def get_owned_ships(self, character):
-        db = Session()
         ships = db.query(Ship).filter(Ship._owner_id == character.id).all()
-        db.close()
         return ships
 
     def purchase_ship(self, character, blueprint):
@@ -65,21 +59,17 @@ class Hangar():
 
         if blueprint in self._ship_blueprints:
             character.subtract_credits(blueprint.get_cost())
-            db = Session()
             ship_name = self.__generate_ship_name(character)
             ship = Ship(character.id, blueprint, ship_name)
             db.add(ship)
             db.commit()
-            db.close()
 
         return ship
 
     def sell_ship(self, character, ship):
         character.add_credits(ship.get_cost())
-        db = Session()
         db.delete(ship)
         db.commit()
-        db.close()
 
     def __generate_ship_name(self, character):
         """Generates a license plate-like name based on the given character"""

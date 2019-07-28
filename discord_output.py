@@ -16,16 +16,18 @@ along with GrindBot.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import asyncio
+import config
 import discord
 from discord.ext import commands
-from main import config
+
+_config = config.get()
 
 def pretty_print(message):
     return '```\n{}\n```'.format(message)
 
 async def public(bot, message):
     """Sends the message to the configured bot output channels"""
-    for cid in config.channel_ids:
+    for cid in _config.channel_ids:
         channel = bot.get_channel(cid)
 
         if channel is None:

@@ -25,8 +25,9 @@ import random
 # Grinder modules
 from character import Character
 import config
+from database import db
 from hangar import Hangar
-from main import Session, is_admin
+from main import is_admin
 import discord_output
 import json_util
 import mission
@@ -57,23 +58,18 @@ class Grinder():
         self._public_messages = []
         self._private_messages = {} # user: list(messages)
 
-        # hangar manages its own DB connection - TODO - do this in MissionControl?
         ships = json_util.read_object_from_file('ships.json')
         self._hangar = Hangar()
         self._hangar.update_db_ship_blueprints(ships)
 
         random.seed()
-        db = Session()
 
         # pick up mission updates
         self._mission_control = MissionControl()
-        self._mission_control.update_db_missions(db)
-        db.commit()
+        self._mission_control.update_db_missions()
         print('Missions loaded.')
 
-        self.__init_characters(db)
-
-        db.close()
+        self.__init_characters()
 
         self._game_task = self._bot.loop.create_task(self.__game_loop())
 
@@ -83,7 +79,7 @@ class Grinder():
         self._game_task.cancel()
         self.__save_game_to_db()
 
-    def __init_characters(self, db):
+    def __init_characters(self):
         characters = db.query(Character).all()
         for c in characters:
             db.expunge(c) # detach object from db
@@ -111,12 +107,9 @@ class Grinder():
             name = args[0]
             # create the new char and store in the db
             c = Character(name, player)
-
-            db = Session()
             db.add(c)
             db.commit()
             db.expunge(c)
-            db.close()
 
             self.__init_character(c)
             msg = 'Created character %s!' % name
@@ -131,10 +124,8 @@ class Grinder():
         msg = ''
         if player in _characters:
             c = _characters[player]
-            db = Session()
             db.delete(c)
             db.commit()
-            db.close()
             name = c._name
             del _characters[player]
             msg = '%s has been deleted.' % name
@@ -216,10 +207,8 @@ class Grinder():
                 if len(args) >= 2 and current_ship is not None:
                     current_ship.set_name(args[1])
                     msg = 'You have christened this ship \'{}\'.'.format(args[1])
-                    db = Session()
                     current_ship.save(db)
                     db.commit()
-                    db.close()
             elif args[0] == 'board':
                 msg = 'Specify a ship\'s name to board.'
                 if len(args) >= 2:
@@ -317,9 +306,7 @@ class Grinder():
         self.__start_next_mission(character)
 
     def __start_next_mission(self, character):
-        db = Session()
-        new_mission = self._mission_control.generate_mission_for(character, db)
-        db.close()
+        new_mission = self._mission_control.generate_mission_for(character)
 
         prev_mission = character.get_current_mission()
         aux_msg = ''
@@ -343,11 +330,9 @@ class Grinder():
             self._private_messages = {}
 
     def __save_game_to_db(self):
-        db = Session()
         for c in _characters.values():
             c.save(db)
         db.commit()
-        db.close()
 
     def __queue_private_message(self, user, message):
         if user not in self._private_messages:

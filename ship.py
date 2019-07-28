@@ -15,7 +15,7 @@ You should have received a copy of the GNU General Public License
 along with GrindBot.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-from db_base import DbBase
+from database import DbModel
 from flight_status import FlightStatus
 from sqlalchemy import Column, Integer, String, Enum, ForeignKey
 from sqlalchemy.orm import relationship
@@ -31,7 +31,7 @@ class ShipJson(object):
         self.aux_hardpoints = aux_hardpoints
         self.description = description
 
-class ShipBlueprint(DbBase):
+class ShipBlueprint(DbModel):
     """
     Class that models a ship type blueprint
     """
@@ -77,7 +77,7 @@ class ShipBlueprint(DbBase):
         lines.append('Auxilliary hardpoints:    {}'.format(self._aux_hardpoints))
         return '\n'.join(lines)
 
-class Ship(DbBase):
+class Ship(DbModel):
     """
     Class that models an instance of ship the player can own/fly
     """
