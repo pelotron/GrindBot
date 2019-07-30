@@ -25,13 +25,14 @@ import random
 # Grinder modules
 from character import Character
 import config
-from database import db
+import database
 from hangar import Hangar
 from main import is_admin
 import discord_output
 import json_util
 import mission
 from mission_control import MissionControl
+import weapon
 
 # it would be nice for Grinder to own its own instance of this,
 # but it seems that this must be static since command checks can't use instance methods
@@ -62,6 +63,9 @@ class Grinder():
         self._hangar = Hangar()
         self._hangar.update_db_ship_blueprints(ships)
 
+        weapons = json_util.read_object_from_file('weapons.json')
+        database.update_db_weapon_blueprints(weapons)
+
         random.seed()
 
         # pick up mission updates
@@ -80,9 +84,9 @@ class Grinder():
         self.__save_game_to_db()
 
     def __init_characters(self):
-        characters = db.query(Character).all()
+        characters = database.session.query(Character).all()
         for c in characters:
-            db.expunge(c) # detach object from db
+            database.session.expunge(c) # detach object from db
             self.__init_character(c)
             print('Loaded {}'.format(c))
 
@@ -107,9 +111,9 @@ class Grinder():
             name = args[0]
             # create the new char and store in the db
             c = Character(name, player)
-            db.add(c)
-            db.commit()
-            db.expunge(c)
+            database.session.add(c)
+            database.session.commit()
+            database.session.expunge(c)
 
             self.__init_character(c)
             msg = 'Created character {}!'.format(name)
@@ -124,8 +128,8 @@ class Grinder():
         msg = ''
         if player in _characters:
             c = _characters[player]
-            db.delete(c)
-            db.commit()
+            database.session.delete(c)
+            database.session.commit()
             name = c._name
             del _characters[player]
             msg = '{} has been deleted.'.format(name)
@@ -207,8 +211,8 @@ class Grinder():
                 if len(args) >= 2 and current_ship is not None:
                     current_ship.set_name(args[1])
                     msg = 'You have christened this ship \'{}\'.'.format(args[1])
-                    current_ship.save(db)
-                    db.commit()
+                    current_ship.save(database.session)
+                    database.session.commit()
             elif args[0] == 'board':
                 msg = 'Specify a ship\'s name to board.'
                 if len(args) >= 2:
@@ -331,8 +335,8 @@ class Grinder():
 
     def __save_game_to_db(self):
         for c in _characters.values():
-            c.save(db)
-        db.commit()
+            c.save(database.session)
+        database.session.commit()
 
     def __queue_private_message(self, user, message):
         if user not in self._private_messages:

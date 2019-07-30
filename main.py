@@ -19,7 +19,7 @@ import discord
 from discord.ext import commands
 
 import config
-from database import db
+import database
 import discord_output
 import json_util
 
@@ -89,4 +89,4 @@ if __name__ == '__main__':
         print('Exception while running bot:')
         print(e)
 
-    db.close()
+    database.session.close()

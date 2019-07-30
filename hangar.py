@@ -16,7 +16,7 @@ along with GrindBot.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 from character import Character
-from database import db
+import database
 import datetime
 import json_util
 from ship import ShipBlueprint, Ship
@@ -28,7 +28,7 @@ class Hangar():
     """
 
     def __init__(self):
-        self._ship_blueprints = db.query(ShipBlueprint).all()
+        self._ship_blueprints = database.session.query(ShipBlueprint).all()
 
     def update_db_ship_blueprints(self, blueprints):
         """
@@ -37,21 +37,21 @@ class Hangar():
         for ship in blueprints:
             try:
                 # update existing ships
-                db_blueprint = db.query(ShipBlueprint).filter(ShipBlueprint._model == ship.model).one()
+                db_blueprint = database.session.query(ShipBlueprint).filter(ShipBlueprint._model == ship.model).one()
                 db_blueprint.update_data(ship)
             except orm.exc.NoResultFound:
                 # add new ship
                 db_ship = ShipBlueprint(ship)
-                db.add(db_ship)
-        db.commit()
-        self._ship_blueprints = db.query(ShipBlueprint).all()
+                database.session.add(db_ship)
+        database.session.commit()
+        self._ship_blueprints = database.session.query(ShipBlueprint).all()
         print('Ships loaded.')
 
     def get_ship_blueprints(self):
         return self._ship_blueprints
 
     def get_owned_ships(self, character):
-        ships = db.query(Ship).filter(Ship._owner_id == character.id).all()
+        ships = database.session.query(Ship).filter(Ship._owner_id == character.id).all()
         return ships
 
     def purchase_ship(self, character, blueprint):
@@ -61,15 +61,15 @@ class Hangar():
             character.subtract_credits(blueprint.get_cost())
             ship_name = self.__generate_ship_name(character)
             ship = Ship(character.id, blueprint, ship_name)
-            db.add(ship)
-            db.commit()
+            database.session.add(ship)
+            database.session.commit()
 
         return ship
 
     def sell_ship(self, character, ship):
         character.add_credits(ship.get_cost())
-        db.delete(ship)
-        db.commit()
+        database.session.delete(ship)
+        database.session.commit()
 
     def __generate_ship_name(self, character):
         """Generates a license plate-like name based on the given character"""

@@ -15,6 +15,7 @@ You should have received a copy of the GNU General Public License
 along with GrindBot.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+from cargo import Cargo
 from database import DbModel
 from flight_status import FlightStatus
 from sqlalchemy import Column, Integer, String, Enum, ForeignKey
@@ -87,14 +88,16 @@ class Ship(DbModel):
     _owner_id = Column(String) # Character ID
     _name = Column(String)
     _blueprint_id = Column(Integer, ForeignKey('ship_blueprint.id'))
-    _blueprint = relationship('ShipBlueprint', lazy='joined')
+    _blueprint = relationship('ShipBlueprint', lazy = 'joined')
     _flight_status = Column(Enum(FlightStatus))
+    _cargo = relationship('Cargo', backref = 'stored_in', lazy = 'joined')
 
     def __init__(self, owner_id, blueprint, name):
         self._owner_id = owner_id
         self._blueprint = blueprint
         self._name = name
         self._flight_status = FlightStatus.DOCKED
+        self._cargo = []
 
     def set_name(self, name):
         self._name = name
@@ -108,12 +111,19 @@ class Ship(DbModel):
     def get_model(self):
         return self._blueprint.get_model()
 
+    def add_cargo(self, cargo):
+        self._cargo.append(cargo)
+
+    def can_fit_cargo(self, cargo):
+        curr_cargo_mass = 0
+        for c in self._cargo:
+            curr_cargo_mass = c.get_mass()
+        return curr_cargo_mass + cargo.get_mass() <= self._blueprint._cargo_capacity
+
     def get_info_card(self):
         lines = []
         lines.append('Name:                     {}'.format(self._name))
         lines.append(self._blueprint.get_info_card())
         lines.append('Flight status:            {}'.format(self._flight_status.name))
+        lines.append('Cargo items:              {}'.format(len(self._cargo)))
         return '\n'.join(lines)
-
-    def save(self, db):
-        db.merge(self)

@@ -152,7 +152,7 @@ class Character(DbModel):
 
     def save(self, db):
         self._current_mission_ticks = self._current_mission.get_progress_ticks()
-        db.merge(self)
+        super().save(db)
 
     def __mission_complete(self, mission):
         for signal in self._signal_mission_complete:

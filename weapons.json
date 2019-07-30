@@ -1,0 +1,20 @@
+[
+    {
+        "py/object": "weapon.WeaponJson",
+        "name": "Turbo Laser",
+        "description": "Manufactured by Blazor's Lazors",
+        "base_damage_dice": "3d3"
+    },
+    {
+        "py/object": "weapon.WeaponJson",
+        "name": "Roto-Cannon",
+        "description": "Historic rapid-fire ballistic weapon",
+        "base_damage_dice": "1d10"
+    },
+    {
+        "py/object": "weapon.WeaponJson",
+        "name": "Railgun",
+        "description": "From Quake 3, with bracket mounts for space ship hulls",
+        "base_damage_dice": "2d6"
+    }
+]

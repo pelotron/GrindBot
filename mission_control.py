@@ -16,7 +16,7 @@ along with GrindBot.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import character
-from database import db
+import database
 import json_util
 from mission import Mission
 import random
@@ -35,7 +35,7 @@ class MissionControl():
         Updates the DB with missions read from the missions json file
         """
         self.__update_db_missions(self._mission_tree)
-        db.commit()
+        database.session.commit()
 
     def generate_mission_for(self, character):
         """
@@ -51,12 +51,12 @@ class MissionControl():
 
         if len(mission_choices) == 0:
             # Choose from root missions
-            mission_choices = db.query(Mission).filter(Mission._parent_id == None).all()
+            mission_choices = database.session.query(Mission).filter(Mission._parent_id == None).all()
         
         print('queried {} missions'.format(len(mission_choices)))
 
         new_mission = self.__choose_mission_from(mission_choices)
-        db.expunge(new_mission)
+        database.session.expunge(new_mission)
         print('got mission {}'.format(new_mission._name))
 
         return new_mission
@@ -76,12 +76,12 @@ class MissionControl():
 
             try:
                 # update existing missions
-                db_mission = db.query(Mission).filter(Mission._name == mission.name).one()
+                db_mission = database.session.query(Mission).filter(Mission._name == mission.name).one()
                 db_mission.update_data(mission)
             except orm.exc.NoResultFound:
                 # add new mission
                 db_mission = Mission(mission)
-                db.add(db_mission)
+                database.session.add(db_mission)
 
             db_mission._branches = child_dbm_list
             parent_dbm_list.append(db_mission)
